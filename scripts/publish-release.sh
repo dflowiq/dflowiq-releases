@@ -46,7 +46,7 @@ shopt -s nullglob
 assets=()
 builds=()
 latest_asset_names=()
-build_timestamp=''
+platform_entries=()
 platforms=("macos-arm64:.dmg" "windows-amd64:.msi" "linux-amd64:.deb" "linux-arm64:.deb")
 for platform in "${platforms[@]}"; do
   target="${platform%%:*}"
@@ -59,17 +59,23 @@ for platform in "${platforms[@]}"; do
   extension_pattern="${extension/./\\.}"
   [[ "$filename" =~ ^dflowiq-${commit_hash}-([0-9]{13})-${target}${extension_pattern}$ ]] || { printf 'Invalid %s release asset name: %s\n' "$target" "$filename" >&2; exit 1; }
   timestamp="${BASH_REMATCH[1]}"
-  [[ -z "$build_timestamp" || "$build_timestamp" == "$timestamp" ]] || { printf 'Release asset timestamps must match.\n' >&2; exit 1; }
-  build_timestamp="$timestamp"
   assets+=("$asset")
   builds+=("$target: $commit_hash-$timestamp")
   latest_asset_names+=("dflowiq-$target$extension")
+  platform_entries+=("\"$target\":{\"buildId\":\"$commit_hash-$timestamp\",\"timestamp\":$timestamp}")
 done
 
 [[ ${#assets[@]} -gt 0 ]] || { printf 'No release assets matching commit hash %s were found.\n' "$commit_hash" >&2; exit 1; }
 
 manifest_path="$release_asset_directory/dflowiq-update-manifest.json"
-printf '{"schemaVersion":1,"buildId":"%s-%s","commit":"%s","timestamp":%s}\n' "$commit_hash" "$build_timestamp" "$commit_hash" "$build_timestamp" > "$manifest_path"
+{
+  printf '{"schemaVersion":2,"commit":"%s","platforms":{' "$commit_hash"
+  for index in "${!platform_entries[@]}"; do
+    [[ "$index" -gt 0 ]] && printf ','
+    printf '%s' "${platform_entries[$index]}"
+  done
+  printf '}}\n'
+} > "$manifest_path"
 assets+=("$manifest_path")
 latest_asset_names+=("dflowiq-update-manifest.json")
 

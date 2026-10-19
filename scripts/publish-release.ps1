@@ -33,7 +33,7 @@ $platforms = @(
 $assets = @()
 $builds = @()
 $latestAssetNames = @()
-$buildTimestamp = $null
+$platformEntries = [ordered]@{}
 foreach ($platform in $platforms) {
   $name = $platform.Name
   $directory = Join-Path $releaseAssetDirectory $name
@@ -54,13 +54,13 @@ foreach ($platform in $platforms) {
     throw "Invalid $name release asset name: $($asset.Name)"
   }
   $timestamp = $match.Groups[1].Value
-  if ($null -ne $buildTimestamp -and $buildTimestamp -ne $timestamp) {
-    throw "Release asset timestamps must match."
-  }
-  $buildTimestamp = $timestamp
   $assets += $asset
   $builds += "$name: $CommitHash-$timestamp"
   $latestAssetNames += "dflowiq-$name$($platform.Extension)"
+  $platformEntries[$name] = [ordered]@{
+    buildId = "$CommitHash-$timestamp"
+    timestamp = [Int64]$timestamp
+  }
 }
 if ($assets.Count -eq 0) {
   throw "No release assets matching commit hash $CommitHash were found."
@@ -68,10 +68,9 @@ if ($assets.Count -eq 0) {
 
 $manifestPath = Join-Path $releaseAssetDirectory "dflowiq-update-manifest.json"
 [ordered]@{
-  schemaVersion = 1
-  buildId = "$CommitHash-$buildTimestamp"
+  schemaVersion = 2
   commit = $CommitHash
-  timestamp = [Int64]$buildTimestamp
+  platforms = $platformEntries
 } | ConvertTo-Json -Compress | Set-Content -LiteralPath $manifestPath -Encoding utf8
 $assets += Get-Item -LiteralPath $manifestPath
 $latestAssetNames += "dflowiq-update-manifest.json"
