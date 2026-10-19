@@ -10,22 +10,50 @@ A dedicated public GitHub repository separates public downloads from application
 - Windows installers must be Authenticode signed and timestamped.
 - Linux packages should additionally be distributed through a signed APT repository for `apt` users.
 
-Never replace files in an existing release. Withdraw a faulty release and publish a corrected release with a new identifier instead.
+Never replace files in a hash-tagged release. Withdraw a faulty hash release and publish a corrected release with a new identifier. The separate `latest` release is intentionally replaced when a new latest release is published.
 
 ## Published artifacts
 
-Every release includes the available native installers and `SHA256SUMS`:
+Each release is identified by its commit hash and includes any available native installers, `dflowiq-update-manifest.json`, and `SHA256SUMS`:
 
-- `dflowiq-<version>-macos-arm64.dmg`
-- `dflowiq-<version>-windows-amd64.msi`
-- `dflowiq-<version>-linux-amd64.deb`
-- `dflowiq-<version>-linux-arm64.deb`
+- `<hash>/macos-arm64/dflowiq-<hash>-<epochInMillis>-macos-arm64.dmg`
+- `<hash>/windows-amd64/dflowiq-<hash>-<epochInMillis>-windows-amd64.msi`
+- `<hash>/linux-amd64/dflowiq-<hash>-<epochInMillis>-linux-amd64.deb`
+- `<hash>/linux-arm64/dflowiq-<hash>-<epochInMillis>-linux-arm64.deb`
 
-All required platform installers must be present before publication; partial releases are not supported.
+Place each release's assets in `release-assets/<hash>/` with matching platform subdirectories. Each platform may have a different epoch timestamp. Missing platforms are omitted from the release.
+
+With `-Latest` or `--latest`, the scripts also replace a separate `latest` release containing stable asset names such as `dflowiq-macos-arm64.dmg`. This is the versionless download channel for clients.
+
+`dflowiq-update-manifest.json` has schema version `2` and identifies the release commit. Its `platforms` object is keyed by installer target; every available target has a `buildId` and a numeric `buildTimestampMillis`. The timestamp is the platform's installer epoch and may differ between platforms. The publishing scripts generate the manifest once, then upload that unchanged manifest and its `SHA256SUMS` checksum entry to both the immutable hash-tagged release and, when requested, the `latest` release.
+
+```json
+{
+  "schemaVersion": 2,
+  "commit": "2419331",
+  "platforms": {
+    "macos-arm64": {
+      "buildId": "2419331-1787863299655",
+      "buildTimestampMillis": 1787863299655
+    },
+    "linux-arm64": {
+      "buildId": "2419331-1787863370943",
+      "buildTimestampMillis": 1787863370943
+    }
+  }
+}
+```
+
+```text
+release-assets/
+  2419331/
+    macos-arm64/dflowiq-2419331-1787863299655-macos-arm64.dmg
+    linux-arm64/dflowiq-2419331-1787863370943-linux-arm64.deb
+```
 
 ## Release workflow
 
-Build, sign, and verify installers before manually uploading them here with [`scripts/publish-release.ps1`](scripts/publish-release.ps1) from a GitHub-authenticated machine. The script validates the expected filenames, generates `SHA256SUMS`, and creates the immutable GitHub Release.
+Build, sign, and verify installers before manually uploading them here with [`scripts/publish-release.ps1`](scripts/publish-release.ps1) from a GitHub-authenticated machine. The script validates the expected filenames, generates `dflowiq-update-manifest.json` and `SHA256SUMS`, and creates the immutable GitHub Release.
 
 Configure the repository as private until the signing process, public downloads, and release-owner review are ready. The publishing user needs permission to create releases in this repository.
 
