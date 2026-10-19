@@ -30,12 +30,16 @@ Every hash-tagged release includes `dflowiq-update-manifest.json` with this sche
     "windows-amd64": {
       "buildId": "a1b2c3d-1735689700000",
       "buildTimestampMillis": 1735689700000
+    },
+    "windows-arm64": {
+      "buildId": "a1b2c3d-1735689750000",
+      "buildTimestampMillis": 1735689750000
     }
   }
 }
 ```
 
-`schemaVersion` is always the numeric value `2`, and `commit` is the GitHub Release commit hash. `platforms` contains one entry for each available installer, keyed by target (`macos-arm64`, `windows-amd64`, `linux-amd64`, or `linux-arm64`). Each entry has a `buildId` of `<commit>-<epochInMillis>` and a numeric `buildTimestampMillis` matching that target's installer filename. Entries are omitted for unavailable platforms, and platform timestamps may differ.
+`schemaVersion` is always the numeric value `2`, and `commit` is the GitHub Release commit hash. `platforms` contains one entry for each available installer, keyed by target (`macos-arm64`, `windows-amd64`, `windows-arm64`, `linux-amd64`, or `linux-arm64`). Each entry has a `buildId` of `<commit>-<epochInMillis>` and a numeric `buildTimestampMillis` matching that target's installer filename. Entries are omitted for unavailable platforms, and platform timestamps may differ.
 
 The publishing scripts generate this manifest once from the selected installers and upload those exact bytes to the immutable hash-tagged release and, with `-Latest` or `--latest`, the mutable `latest` release. Each release has its own `SHA256SUMS`: the immutable release lists its hash-and-timestamp installer names, while `latest` lists the stable renamed installer names it actually uploads. Both checksum files include the unchanged manifest as `dflowiq-update-manifest.json`.
 
@@ -84,6 +88,7 @@ GitHub provides immutable asset URLs for a given tag:
 ```text
 https://github.com/dflowiq/dflowiq-releases/releases/download/a1b2c3d/dflowiq-a1b2c3d-1735689600000-macos-arm64.dmg
 https://github.com/dflowiq/dflowiq-releases/releases/download/a1b2c3d/dflowiq-a1b2c3d-1735689700000-windows-amd64.msi
+https://github.com/dflowiq/dflowiq-releases/releases/download/a1b2c3d/dflowiq-a1b2c3d-1735689750000-windows-arm64.msi
 https://github.com/dflowiq/dflowiq-releases/releases/download/a1b2c3d/dflowiq-a1b2c3d-1735689800000-linux-amd64.deb
 https://github.com/dflowiq/dflowiq-releases/releases/download/a1b2c3d/dflowiq-a1b2c3d-1735689900000-linux-arm64.deb
 ```
@@ -97,6 +102,7 @@ When published with `-Latest` or `--latest`, clients can use these mutable URLs:
 ```text
 https://github.com/dflowiq/dflowiq-releases/releases/download/latest/dflowiq-macos-arm64.dmg
 https://github.com/dflowiq/dflowiq-releases/releases/download/latest/dflowiq-windows-amd64.msi
+https://github.com/dflowiq/dflowiq-releases/releases/download/latest/dflowiq-windows-arm64.msi
 https://github.com/dflowiq/dflowiq-releases/releases/download/latest/dflowiq-linux-amd64.deb
 https://github.com/dflowiq/dflowiq-releases/releases/download/latest/dflowiq-linux-arm64.deb
 ```

@@ -27,6 +27,7 @@ if (-not (Test-Path -Path $releaseAssetDirectory -PathType Container)) {
 $platforms = @(
   @{ Name = "macos-arm64"; Extension = ".dmg" },
   @{ Name = "windows-amd64"; Extension = ".msi" },
+  @{ Name = "windows-arm64"; Extension = ".msi" },
   @{ Name = "linux-amd64"; Extension = ".deb" },
   @{ Name = "linux-arm64"; Extension = ".deb" }
 )

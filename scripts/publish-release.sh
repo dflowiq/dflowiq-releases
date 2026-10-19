@@ -47,7 +47,7 @@ assets=()
 builds=()
 latest_asset_names=()
 platform_entries=()
-platforms=("macos-arm64:.dmg" "windows-amd64:.msi" "linux-amd64:.deb" "linux-arm64:.deb")
+platforms=("macos-arm64:.dmg" "windows-amd64:.msi" "windows-arm64:.msi" "linux-amd64:.deb" "linux-arm64:.deb")
 for platform in "${platforms[@]}"; do
   target="${platform%%:*}"
   extension="${platform#*:}"

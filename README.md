@@ -18,6 +18,7 @@ Each release is identified by its commit hash and includes any available native 
 
 - `<hash>/macos-arm64/dflowiq-<hash>-<epochInMillis>-macos-arm64.dmg`
 - `<hash>/windows-amd64/dflowiq-<hash>-<epochInMillis>-windows-amd64.msi`
+- `<hash>/windows-arm64/dflowiq-<hash>-<epochInMillis>-windows-arm64.msi`
 - `<hash>/linux-amd64/dflowiq-<hash>-<epochInMillis>-linux-amd64.deb`
 - `<hash>/linux-arm64/dflowiq-<hash>-<epochInMillis>-linux-arm64.deb`
 

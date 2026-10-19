@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $scriptDirectory = Split-Path -Parent $PSCommandPath
 $commitHash = "abcdef1234567"
 $timestampMacos = "1700000000001"
+$timestampWindows = "1700000000500"
 $timestampLinux = "1700000000999"
 $tempDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("dflowiq-publish-release-test-" + [Guid]::NewGuid())
 $assetDirectory = Join-Path $tempDirectory "release-assets"
@@ -49,8 +50,9 @@ function gh {
 }
 
 try {
-  New-Item -ItemType Directory -Force -Path (Join-Path $releaseDirectory "macos-arm64"), (Join-Path $releaseDirectory "linux-amd64") | Out-Null
+  New-Item -ItemType Directory -Force -Path (Join-Path $releaseDirectory "macos-arm64"), (Join-Path $releaseDirectory "windows-arm64"), (Join-Path $releaseDirectory "linux-amd64") | Out-Null
   Set-Content -LiteralPath (Join-Path $releaseDirectory "macos-arm64/dflowiq-$commitHash-$timestampMacos-macos-arm64.dmg") -Value "macOS installer"
+  Set-Content -LiteralPath (Join-Path $releaseDirectory "windows-arm64/dflowiq-$commitHash-$timestampWindows-windows-arm64.msi") -Value "Windows ARM64 installer"
   Set-Content -LiteralPath (Join-Path $releaseDirectory "linux-amd64/dflowiq-$commitHash-$timestampLinux-linux-amd64.deb") -Value "Linux installer"
   $notesPath = Join-Path $tempDirectory "notes.md"
   Set-Content -LiteralPath $notesPath -Value "Release notes"
@@ -63,6 +65,7 @@ try {
   if ($manifest.schemaVersion -ne 2 -or $manifest.commit -ne $commitHash) { throw "Manifest schema or commit is incorrect." }
   foreach ($platform in @(
     @{ Name = "macos-arm64"; Timestamp = [Int64]$timestampMacos },
+    @{ Name = "windows-arm64"; Timestamp = [Int64]$timestampWindows },
     @{ Name = "linux-amd64"; Timestamp = [Int64]$timestampLinux }
   )) {
     $entry = $manifest.platforms.($platform.Name)
