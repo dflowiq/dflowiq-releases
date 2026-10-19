@@ -99,7 +99,7 @@ $latestAssetDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "dflowiq-lat
 ) | Set-Content -LiteralPath $notesPath
 
 try {
-  $releaseArguments = @("release", "create", $CommitHash) + $assets.FullName + $checksumPath + @("--title", "dFlowIQ $CommitHash", "--notes-file", $notesPath)
+  $releaseArguments = @("release", "create", $CommitHash) + $assets.FullName + $checksumPath + @("--target", $CommitHash, "--title", "dFlowIQ $CommitHash", "--notes-file", $notesPath)
   & gh release view $CommitHash 2>$null | Out-Null
   if ($LASTEXITCODE -eq 0) {
     if (-not $Latest) { throw "Release already exists: $CommitHash" }

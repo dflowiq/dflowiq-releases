@@ -24,5 +24,19 @@ immutable_manifest="$temp_directory/received/$commit_hash/dflowiq-update-manifes
 latest_manifest="$temp_directory/received/latest/dflowiq-update-manifest.json"
 [[ "$(< "$immutable_manifest")" == "${expected_manifest%$'\n'}" ]] || { printf 'Manifest does not match the schema-2 contract.\n' >&2; exit 1; }
 cmp -s "$immutable_manifest" "$latest_manifest"
-grep -Fqx "$(shasum -a 256 "$immutable_manifest" | cut -d ' ' -f 1)  dflowiq-update-manifest.json" "$temp_directory/received/$commit_hash/SHA256SUMS"
-grep -Fqx "$(shasum -a 256 "$latest_manifest" | cut -d ' ' -f 1)  dflowiq-update-manifest.json" "$temp_directory/received/latest/SHA256SUMS"
+immutable_target_is_commit=false
+expect_target_value=false
+while IFS= read -r argument; do
+  if [[ "$expect_target_value" == true ]]; then
+    if [[ "$argument" == "$commit_hash" ]]; then
+      immutable_target_is_commit=true
+    fi
+    expect_target_value=false
+  elif [[ "$argument" == --target ]]; then
+    expect_target_value=true
+  fi
+done < "$temp_directory/received/$commit_hash/arguments"
+[[ "$immutable_target_is_commit" == true ]] || { printf 'Immutable release target is incorrect.\n' >&2; exit 1; }
+for release in "$commit_hash" latest; do
+  (cd "$temp_directory/received/$release" && shasum -a 256 -c SHA256SUMS)
+done

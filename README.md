@@ -25,7 +25,7 @@ Place each release's assets in `release-assets/<hash>/` with matching platform s
 
 With `-Latest` or `--latest`, the scripts also replace a separate `latest` release containing stable asset names such as `dflowiq-macos-arm64.dmg`. This is the versionless download channel for clients.
 
-`dflowiq-update-manifest.json` has schema version `2` and identifies the release commit. Its `platforms` object is keyed by installer target; every available target has a `buildId` and a numeric `buildTimestampMillis`. The timestamp is the platform's installer epoch and may differ between platforms. The publishing scripts generate the manifest once, then upload that unchanged manifest and its `SHA256SUMS` checksum entry to both the immutable hash-tagged release and, when requested, the `latest` release.
+`dflowiq-update-manifest.json` has schema version `2` and identifies the release commit. Its `platforms` object is keyed by installer target; every available target has a `buildId` and a numeric `buildTimestampMillis`. The timestamp is the platform's installer epoch and may differ between platforms. The publishing scripts generate the manifest once and upload those exact bytes to the immutable hash-tagged release and, when requested, the `latest` release. Each release generates its own `SHA256SUMS`: the immutable release names hash-and-timestamp installers, while `latest` names its stable renamed installers. In both releases, the manifest checksum names `dflowiq-update-manifest.json`.
 
 ```json
 {

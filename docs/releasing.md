@@ -37,7 +37,7 @@ Every hash-tagged release includes `dflowiq-update-manifest.json` with this sche
 
 `schemaVersion` is always the numeric value `2`, and `commit` is the GitHub Release commit hash. `platforms` contains one entry for each available installer, keyed by target (`macos-arm64`, `windows-amd64`, `linux-amd64`, or `linux-arm64`). Each entry has a `buildId` of `<commit>-<epochInMillis>` and a numeric `buildTimestampMillis` matching that target's installer filename. Entries are omitted for unavailable platforms, and platform timestamps may differ.
 
-The publishing scripts generate this manifest once from the selected installers and upload it unchanged with its `SHA256SUMS` checksum entry to the immutable hash-tagged release and, with `-Latest` or `--latest`, the mutable `latest` release.
+The publishing scripts generate this manifest once from the selected installers and upload those exact bytes to the immutable hash-tagged release and, with `-Latest` or `--latest`, the mutable `latest` release. Each release has its own `SHA256SUMS`: the immutable release lists its hash-and-timestamp installer names, while `latest` lists the stable renamed installer names it actually uploads. Both checksum files include the unchanged manifest as `dflowiq-update-manifest.json`.
 
 ## Manual publication
 
@@ -51,7 +51,7 @@ After building and verifying installers, place each available file in its platfo
 ./scripts/publish-release.sh --commit-hash a1b2c3d --release-notes ./docs/release-notes/a1b2c3d.md --latest
 ```
 
-The scripts select at most one valid installer from each platform directory, skip missing platforms, and create `SHA256SUMS` from the exact uploaded files, including `dflowiq-update-manifest.json`. Add `-Latest` or `--latest` to create or replace a separate `latest` release and tag. It contains the same installers under stable names, plus the unchanged manifest, so clients can download them without a hash or epoch timestamp. Hash-tagged releases remain unchanged. `release-assets/` is intentionally ignored by Git; do not commit installers to repository history.
+The scripts select at most one valid installer from each platform directory, skip missing platforms, and create an immutable hash-tagged release targeted at the declared commit hash. `SHA256SUMS` names the exact uploaded files for that release, including `dflowiq-update-manifest.json`. Add `-Latest` or `--latest` to create or replace a separate `latest` release and tag. It contains the same installer bytes under stable names, plus the unchanged manifest, so it has a separate checksum file naming those stable assets. Hash-tagged releases remain unchanged. `release-assets/` is intentionally ignored by Git; do not commit installers to repository history.
 
 The `latest` release and its tag must remain deletable. Do not enable a repository-wide immutable-release policy if this mutable download channel is required.
 
@@ -67,7 +67,7 @@ The `latest` release and its tag must remain deletable. Do not enable a reposito
 
 ## Publish and verify
 
-Run the publishing script after every available installer is verified. It uploads `dflowiq-update-manifest.json` and `SHA256SUMS` generated from the exact assets uploaded to GitHub.
+Run the publishing script after every available installer is verified. It uploads `dflowiq-update-manifest.json` unchanged to both releases and generates each release's `SHA256SUMS` from the asset names uploaded to that release.
 
 After publication:
 

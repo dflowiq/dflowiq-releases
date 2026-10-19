@@ -28,8 +28,18 @@ function gh {
   if ($Arguments[0] -eq "release" -and $Arguments[1] -eq "create") {
     $destination = Join-Path $receivedDirectory $Arguments[2]
     New-Item -ItemType Directory -Force -Path $destination | Out-Null
+    Set-Content -LiteralPath (Join-Path $destination "arguments") -Value $Arguments[3..($Arguments.Count - 1)]
+    $skipValue = $false
     foreach ($argument in $Arguments[3..($Arguments.Count - 1)]) {
-      if ($argument.StartsWith("--")) { break }
+      if ($skipValue) {
+        $skipValue = $false
+        continue
+      }
+      if ($argument -in @("--target", "--title", "--notes-file")) {
+        $skipValue = $true
+        continue
+      }
+      if ($argument.StartsWith("--")) { continue }
       Copy-Item -LiteralPath $argument -Destination $destination
     }
     $global:LASTEXITCODE = 0
@@ -60,11 +70,17 @@ try {
     if ($null -ne $entry.PSObject.Properties["timestamp"]) { throw "Manifest entry for $($platform.Name) contains obsolete timestamp." }
   }
   if ((Get-FileHash -Algorithm SHA256 -LiteralPath $immutableManifest).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $latestManifest).Hash) { throw "Immutable and latest manifests differ." }
+  $immutableArguments = Get-Content -LiteralPath (Join-Path $receivedDirectory "$commitHash/arguments")
+  $targetIndex = [Array]::IndexOf([string[]]$immutableArguments, "--target")
+  if ($targetIndex -lt 0 -or $immutableArguments[$targetIndex + 1] -ne $commitHash) { throw "Immutable release target is incorrect." }
   foreach ($release in @($commitHash, "latest")) {
-    $manifestPath = Join-Path $receivedDirectory "$release/dflowiq-update-manifest.json"
-    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $manifestPath).Hash.ToLowerInvariant()
-    $checksum = "$hash  dflowiq-update-manifest.json"
-    if (-not (Select-String -LiteralPath (Join-Path $receivedDirectory "$release/SHA256SUMS") -SimpleMatch $checksum -Quiet)) { throw "Manifest checksum missing from $release release." }
+    $releaseDirectory = Join-Path $receivedDirectory $release
+    foreach ($line in Get-Content -LiteralPath (Join-Path $releaseDirectory "SHA256SUMS")) {
+      $parts = $line -split "  ", 2
+      $assetPath = Join-Path $releaseDirectory $parts[1]
+      if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) { throw "Checksum names missing asset $($parts[1]) in $release release." }
+      if ((Get-FileHash -Algorithm SHA256 -LiteralPath $assetPath).Hash.ToLowerInvariant() -ne $parts[0]) { throw "Checksum is incorrect for $($parts[1]) in $release release." }
+    }
   }
 } finally {
   Remove-Item -LiteralPath $tempDirectory -Recurse -Force -ErrorAction SilentlyContinue

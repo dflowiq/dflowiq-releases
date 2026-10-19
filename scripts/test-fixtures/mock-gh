@@ -10,8 +10,20 @@ case "$1 $2" in
     destination="$GH_CAPTURE/$release"
     mkdir -p "$destination"
     shift 3
+    printf '%s\n' "$@" > "$destination/arguments"
+    skip_value=false
     for argument in "$@"; do
-      [[ "$argument" == --* ]] && break
+      if [[ "$skip_value" == true ]]; then
+        skip_value=false
+        continue
+      fi
+      case "$argument" in
+        --target|--title|--notes-file)
+          skip_value=true
+          continue
+          ;;
+        --*) continue ;;
+      esac
       cp "$argument" "$destination/"
     done
     ;;
