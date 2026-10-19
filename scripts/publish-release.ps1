@@ -1,15 +1,16 @@
 param(
   [Parameter(Mandatory = $true)]
-  [string]$Version,
+  [string]$CommitHash,
   [Parameter(Mandatory = $true)]
   [string]$ReleaseNotes,
-  [string]$AssetDirectory = (Join-Path $PSScriptRoot "../release-assets")
+  [string]$AssetDirectory = (Join-Path $PSScriptRoot "../release-assets"),
+  [switch]$Latest
 )
 
 $ErrorActionPreference = "Stop"
 
-if ($Version -notmatch '^[0-9a-fA-F]{7,64}-[0-9]{13}$') {
-  throw "Version must use HASH-EPOCHINMILLIS format."
+if ($CommitHash -notmatch '^[0-9a-fA-F]{7,64}$') {
+  throw "CommitHash must contain 7 to 64 hexadecimal characters."
 }
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
   throw "GitHub CLI (gh) is required. Authenticate with 'gh auth login' first."
@@ -18,31 +19,80 @@ if (-not (Test-Path -Path $ReleaseNotes -PathType Leaf)) {
   throw "Release notes file was not found: $ReleaseNotes"
 }
 
-$requiredAssets = @(
-  "dflowiq-$Version-macos-arm64.dmg",
-  "dflowiq-$Version-windows-amd64.msi",
-  "dflowiq-$Version-linux-amd64.deb",
-  "dflowiq-$Version-linux-arm64.deb"
-)
-$assets = foreach ($asset in $requiredAssets) {
-  $path = Join-Path $AssetDirectory $asset
-  if (-not (Test-Path -Path $path -PathType Leaf)) {
-    throw "Required release asset was not found: $path"
-  }
-  Get-Item $path
+$releaseAssetDirectory = Join-Path $AssetDirectory $CommitHash
+if (-not (Test-Path -Path $releaseAssetDirectory -PathType Container)) {
+  throw "Release asset directory was not found: $releaseAssetDirectory"
 }
 
-$checksumPath = Join-Path $AssetDirectory "SHA256SUMS"
+$platforms = @(
+  @{ Name = "macos-arm64"; Extension = ".dmg" },
+  @{ Name = "windows-amd64"; Extension = ".msi" },
+  @{ Name = "linux-amd64"; Extension = ".deb" },
+  @{ Name = "linux-arm64"; Extension = ".deb" }
+)
+$assets = @()
+$builds = @()
+$latestAssetNames = @()
+$buildTimestamp = $null
+foreach ($platform in $platforms) {
+  $name = $platform.Name
+  $directory = Join-Path $releaseAssetDirectory $name
+  if (-not (Test-Path -Path $directory -PathType Container)) {
+    continue
+  }
+  $matches = @(Get-ChildItem -Path $directory -Filter "dflowiq-$CommitHash-*-$name$($platform.Extension)" -File)
+  if ($matches.Count -eq 0) {
+    continue
+  }
+  if ($matches.Count -ne 1) {
+    throw "Expected at most one $name release asset."
+  }
+  $asset = $matches[0]
+  $filePattern = '^dflowiq-' + [regex]::Escape($CommitHash) + '-([0-9]{13})-' + [regex]::Escape($name) + [regex]::Escape($platform.Extension) + '$'
+  $match = [regex]::Match($asset.Name, $filePattern)
+  if (-not $match.Success) {
+    throw "Invalid $name release asset name: $($asset.Name)"
+  }
+  $timestamp = $match.Groups[1].Value
+  if ($null -ne $buildTimestamp -and $buildTimestamp -ne $timestamp) {
+    throw "Release asset timestamps must match."
+  }
+  $buildTimestamp = $timestamp
+  $assets += $asset
+  $builds += "$name: $CommitHash-$timestamp"
+  $latestAssetNames += "dflowiq-$name$($platform.Extension)"
+}
+if ($assets.Count -eq 0) {
+  throw "No release assets matching commit hash $CommitHash were found."
+}
+
+$manifestPath = Join-Path $releaseAssetDirectory "dflowiq-update-manifest.json"
+[ordered]@{
+  schemaVersion = 1
+  buildId = "$CommitHash-$buildTimestamp"
+  commit = $CommitHash
+  timestamp = [Int64]$buildTimestamp
+} | ConvertTo-Json -Compress | Set-Content -LiteralPath $manifestPath -Encoding utf8
+$assets += Get-Item -LiteralPath $manifestPath
+$latestAssetNames += "dflowiq-update-manifest.json"
+
+$checksumPath = Join-Path $releaseAssetDirectory "SHA256SUMS"
 $assets | ForEach-Object {
   $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
   "$hash  $($_.Name)"
 } | Set-Content -LiteralPath $checksumPath
 
-$notesPath = Join-Path ([System.IO.Path]::GetTempPath()) "dflowiq-release-notes-$Version.md"
+$notesPath = Join-Path ([System.IO.Path]::GetTempPath()) "dflowiq-release-notes-$CommitHash.md"
+$latestChecksumPath = Join-Path ([System.IO.Path]::GetTempPath()) "dflowiq-latest-checksums-$CommitHash.txt"
+$latestAssetDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "dflowiq-latest-assets-$CommitHash"
 @(
-  "# dFlowIQ $Version"
+  "# dFlowIQ $CommitHash"
   ""
   (Get-Content -LiteralPath $ReleaseNotes -Raw).Trim()
+  ""
+  "## Builds"
+  ""
+  ($builds | ForEach-Object { "- ``$_``" })
   ""
   "## Checksums"
   ""
@@ -50,8 +100,41 @@ $notesPath = Join-Path ([System.IO.Path]::GetTempPath()) "dflowiq-release-notes-
 ) | Set-Content -LiteralPath $notesPath
 
 try {
-  & gh release create $Version $assets.FullName $checksumPath --title "dFlowIQ $Version" --notes-file $notesPath
-  if ($LASTEXITCODE -ne 0) { throw "GitHub Release creation failed." }
+  $releaseArguments = @("release", "create", $CommitHash) + $assets.FullName + $checksumPath + @("--title", "dFlowIQ $CommitHash", "--notes-file", $notesPath)
+  & gh release view $CommitHash 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) {
+    if (-not $Latest) { throw "Release already exists: $CommitHash" }
+  } else {
+    & gh @releaseArguments
+    if ($LASTEXITCODE -ne 0) { throw "GitHub Release creation failed." }
+  }
+  if ($Latest) {
+    $hashTagSha = [string](& gh api "repos/{owner}/{repo}/git/ref/tags/$CommitHash" --jq ".object.sha")
+    if ($LASTEXITCODE -ne 0) { throw "Could not resolve Git tag $CommitHash." }
+    & gh release view latest 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      & gh release delete latest --yes --cleanup-tag
+      if ($LASTEXITCODE -ne 0) { throw "Could not replace the existing latest release." }
+    } else {
+      & gh api --method DELETE "repos/{owner}/{repo}/git/refs/tags/latest" 2>$null | Out-Null
+    }
+    New-Item -ItemType Directory -Force -Path $latestAssetDirectory | Out-Null
+    $latestAssets = @()
+    for ($index = 0; $index -lt $assets.Count; $index++) {
+      $latestAsset = Join-Path $latestAssetDirectory $latestAssetNames[$index]
+      Copy-Item -LiteralPath $assets[$index].FullName -Destination $latestAsset
+      $latestAssets += Get-Item $latestAsset
+    }
+    $latestAssets | ForEach-Object {
+      $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
+      "$hash  $($_.Name)"
+    } | Set-Content -LiteralPath $latestChecksumPath
+    Copy-Item -LiteralPath $latestChecksumPath -Destination (Join-Path $latestAssetDirectory "SHA256SUMS")
+    & gh release create latest $latestAssets.FullName (Join-Path $latestAssetDirectory "SHA256SUMS") --target $hashTagSha --title "dFlowIQ Latest" --notes-file $notesPath --latest
+    if ($LASTEXITCODE -ne 0) { throw "Could not create the latest release." }
+  }
 } finally {
   Remove-Item -LiteralPath $notesPath -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $latestChecksumPath -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $latestAssetDirectory -Recurse -Force -ErrorAction SilentlyContinue
 }
