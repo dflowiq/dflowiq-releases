@@ -62,7 +62,7 @@ for platform in "${platforms[@]}"; do
   assets+=("$asset")
   builds+=("$target: $commit_hash-$timestamp")
   latest_asset_names+=("dflowiq-$target$extension")
-  platform_entries+=("\"$target\":{\"buildId\":\"$commit_hash-$timestamp\",\"timestamp\":$timestamp}")
+  platform_entries+=("\"$target\":{\"buildId\":\"$commit_hash-$timestamp\",\"buildTimestampMillis\":$timestamp}")
 done
 
 [[ ${#assets[@]} -gt 0 ]] || { printf 'No release assets matching commit hash %s were found.\n' "$commit_hash" >&2; exit 1; }

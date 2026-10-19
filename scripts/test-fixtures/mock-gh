@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "$1 $2" in
+  'release view') exit 1 ;;
+  'api repos/{owner}/{repo}/git/ref/tags/'*) printf 'tag-sha\n' ;;
+  'api --method') exit 0 ;;
+  'release create')
+    release="$3"
+    destination="$GH_CAPTURE/$release"
+    mkdir -p "$destination"
+    shift 3
+    for argument in "$@"; do
+      [[ "$argument" == --* ]] && break
+      cp "$argument" "$destination/"
+    done
+    ;;
+  *) printf 'Unexpected gh command: %s\n' "$*" >&2; exit 1 ;;
+esac

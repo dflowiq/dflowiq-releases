@@ -59,7 +59,7 @@ foreach ($platform in $platforms) {
   $latestAssetNames += "dflowiq-$name$($platform.Extension)"
   $platformEntries[$name] = [ordered]@{
     buildId = "$CommitHash-$timestamp"
-    timestamp = [Int64]$timestamp
+    buildTimestampMillis = [Int64]$timestamp
   }
 }
 if ($assets.Count -eq 0) {
