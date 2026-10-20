@@ -75,7 +75,7 @@ try {
   if ((Get-FileHash -Algorithm SHA256 -LiteralPath $immutableManifest).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath $latestManifest).Hash) { throw "Immutable and latest manifests differ." }
   $immutableArguments = Get-Content -LiteralPath (Join-Path $receivedDirectory "$commitHash/arguments")
   $targetIndex = [Array]::IndexOf([string[]]$immutableArguments, "--target")
-  if ($targetIndex -lt 0 -or $immutableArguments[$targetIndex + 1] -ne $commitHash) { throw "Immutable release target is incorrect." }
+  if ($targetIndex -lt 0 -or $immutableArguments[$targetIndex + 1] -ne "main") { throw "Immutable release target is incorrect." }
     foreach ($release in @($commitHash, "latest")) {
     $releaseDirectory = Join-Path $receivedDirectory $release
     foreach ($line in Get-Content -LiteralPath (Join-Path $releaseDirectory "SHA256SUMS")) {

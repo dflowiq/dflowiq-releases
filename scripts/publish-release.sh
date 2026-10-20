@@ -110,7 +110,7 @@ trap 'rm -f "$notes_path" "$latest_checksum_path"; rm -rf "$latest_asset_directo
   printf '\n## Checksums\n\nSee the attached `SHA256SUMS` file.\n'
 } > "$notes_path"
 
-release_arguments=(release create "$commit_hash" "${assets[@]}" "$checksum_path" --target "$commit_hash" --title "dFlowIQ $commit_hash" --notes-file "$notes_path")
+release_arguments=(release create "$commit_hash" "${assets[@]}" "$checksum_path" --target main --title "dFlowIQ $commit_hash" --notes-file "$notes_path")
 if gh release view "$commit_hash" >/dev/null 2>&1; then
   [[ "$latest" == true ]] || { printf 'Release already exists: %s\n' "$commit_hash" >&2; exit 1; }
 else
