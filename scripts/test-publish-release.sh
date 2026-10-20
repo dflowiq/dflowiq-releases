@@ -42,3 +42,16 @@ done < "$temp_directory/received/$commit_hash/arguments"
 for release in "$commit_hash" latest; do
   (cd "$temp_directory/received/$release" && shasum -a 256 -c SHA256SUMS)
 done
+
+interactive_commit_hash="1234567"
+interactive_release_directory="$asset_directory/$interactive_commit_hash"
+interactive_received_directory="$temp_directory/interactive-received"
+mkdir -p "$interactive_release_directory/macos-arm64"
+printf 'macOS installer\n' > "$interactive_release_directory/macos-arm64/dflowiq-$interactive_commit_hash-$timestamp_macos-macos-arm64.dmg"
+printf 'Release notes\n' > "$interactive_release_directory/release-notes.md"
+
+printf '%s\n\n\n%s\n' "$interactive_commit_hash" "$asset_directory" | PATH="$temp_directory/bin:$PATH" GH_CAPTURE="$interactive_received_directory" \
+  "$script_directory/publish-release.sh"
+
+[[ -f "$interactive_received_directory/$interactive_commit_hash/dflowiq-update-manifest.json" ]] || { printf 'Interactive publication did not create the immutable release.\n' >&2; exit 1; }
+[[ ! -d "$interactive_received_directory/latest" ]] || { printf 'Interactive publication unexpectedly created a latest release.\n' >&2; exit 1; }

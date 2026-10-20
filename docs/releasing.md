@@ -57,6 +57,8 @@ After building and verifying installers, place each available file in its platfo
 
 The scripts select at most one valid installer from each platform directory, skip missing platforms, and create an immutable hash-tagged release targeted at the declared commit hash. `SHA256SUMS` names the exact uploaded files for that release, including `dflowiq-update-manifest.json`. Add `-Latest` or `--latest` to create or replace a separate `latest` release and tag. It contains the same installer bytes under stable names, plus the unchanged manifest, so it has a separate checksum file naming those stable assets. Hash-tagged releases remain unchanged. `release-assets/` is intentionally ignored by Git; do not commit installers to repository history.
 
+Running either publishing script with no arguments starts an interactive prompt for the commit hash, release-notes path, whether to publish `latest`, and the asset directory. Press Enter for the default asset directory, answer no (the default) to skip `latest`, or leave the release-notes path blank to use `<asset-directory>/<hash>/release-notes.md` (`release-assets/<hash>/release-notes.md` with the default directory).
+
 The `latest` release and its tag must remain deletable. Do not enable a repository-wide immutable-release policy if this mutable download channel is required.
 
 ## Pre-release checklist

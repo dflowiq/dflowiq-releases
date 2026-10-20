@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  printf 'Usage: %s --commit-hash HASH --release-notes PATH [--asset-directory PATH] [--latest]\n' "$0" >&2
+  printf 'Usage: %s [--commit-hash HASH] [--release-notes PATH] [--asset-directory PATH] [--latest]\n' "$0" >&2
   exit 1
 }
 
@@ -10,6 +10,9 @@ commit_hash=''
 release_notes=''
 asset_directory="$(dirname "$0")/../release-assets"
 latest=false
+interactive=false
+
+[[ $# -eq 0 ]] && interactive=true
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -35,9 +38,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$interactive" == true ]]; then
+  read -r -p 'Commit hash: ' commit_hash
+  read -r -p 'Release notes path (blank for release-notes.md in the asset directory): ' release_notes
+  read -r -p 'Publish as latest? [y/N]: ' latest_response
+  [[ "$latest_response" =~ ^[Yy]([Ee][Ss])?$ ]] && latest=true
+  read -r -p "Asset directory [$asset_directory]: " asset_directory_response
+  [[ -n "$asset_directory_response" ]] && asset_directory="$asset_directory_response"
+fi
+
 asset_directory="$(cd "$asset_directory" && pwd)"
 [[ "$commit_hash" =~ ^[0-9a-fA-F]{7,64}$ ]] || { printf 'Commit hash must contain 7 to 64 hexadecimal characters.\n' >&2; exit 1; }
 command -v gh >/dev/null || { printf "GitHub CLI (gh) is required. Authenticate with 'gh auth login' first.\n" >&2; exit 1; }
+[[ -n "$release_notes" ]] || release_notes="$asset_directory/$commit_hash/release-notes.md"
 [[ -f "$release_notes" ]] || { printf 'Release notes file was not found: %s\n' "$release_notes" >&2; exit 1; }
 release_asset_directory="$asset_directory/$commit_hash"
 [[ -d "$release_asset_directory" ]] || { printf 'Release asset directory was not found: %s\n' "$release_asset_directory" >&2; exit 1; }

@@ -76,15 +76,33 @@ try {
   $immutableArguments = Get-Content -LiteralPath (Join-Path $receivedDirectory "$commitHash/arguments")
   $targetIndex = [Array]::IndexOf([string[]]$immutableArguments, "--target")
   if ($targetIndex -lt 0 -or $immutableArguments[$targetIndex + 1] -ne $commitHash) { throw "Immutable release target is incorrect." }
-  foreach ($release in @($commitHash, "latest")) {
+    foreach ($release in @($commitHash, "latest")) {
     $releaseDirectory = Join-Path $receivedDirectory $release
     foreach ($line in Get-Content -LiteralPath (Join-Path $releaseDirectory "SHA256SUMS")) {
       $parts = $line -split "  ", 2
       $assetPath = Join-Path $releaseDirectory $parts[1]
       if (-not (Test-Path -LiteralPath $assetPath -PathType Leaf)) { throw "Checksum names missing asset $($parts[1]) in $release release." }
       if ((Get-FileHash -Algorithm SHA256 -LiteralPath $assetPath).Hash.ToLowerInvariant() -ne $parts[0]) { throw "Checksum is incorrect for $($parts[1]) in $release release." }
+      }
     }
-  }
+
+    $interactiveCommitHash = "1234567"
+    $interactiveReleaseDirectory = Join-Path $assetDirectory $interactiveCommitHash
+    New-Item -ItemType Directory -Force -Path (Join-Path $interactiveReleaseDirectory "macos-arm64") | Out-Null
+    Set-Content -LiteralPath (Join-Path $interactiveReleaseDirectory "macos-arm64/dflowiq-$interactiveCommitHash-$timestampMacos-macos-arm64.dmg") -Value "macOS installer"
+    Set-Content -LiteralPath (Join-Path $interactiveReleaseDirectory "release-notes.md") -Value "Release notes"
+
+    $receivedDirectory = Join-Path $tempDirectory "interactive-received"
+    $interactiveResponses = [System.Collections.Generic.Queue[string]]::new()
+    @($interactiveCommitHash, "", "", $assetDirectory) | ForEach-Object { $interactiveResponses.Enqueue($_) }
+    function Read-Host {
+      param([string]$Prompt)
+      return $interactiveResponses.Dequeue()
+    }
+    & (Join-Path $scriptDirectory "publish-release.ps1")
+
+    if (-not (Test-Path -LiteralPath (Join-Path $receivedDirectory "$interactiveCommitHash/dflowiq-update-manifest.json") -PathType Leaf)) { throw "Interactive publication did not create the immutable release." }
+    if (Test-Path -LiteralPath (Join-Path $receivedDirectory "latest") -PathType Container) { throw "Interactive publication unexpectedly created a latest release." }
 } finally {
   Remove-Item -LiteralPath $tempDirectory -Recurse -Force -ErrorAction SilentlyContinue
 }

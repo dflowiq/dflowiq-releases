@@ -1,7 +1,5 @@
 param(
-  [Parameter(Mandatory = $true)]
   [string]$CommitHash,
-  [Parameter(Mandatory = $true)]
   [string]$ReleaseNotes,
   [string]$AssetDirectory = (Join-Path $PSScriptRoot "../release-assets"),
   [switch]$Latest
@@ -9,8 +7,23 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+if ($PSBoundParameters.Count -eq 0) {
+  $CommitHash = Read-Host "Commit hash"
+  $ReleaseNotes = Read-Host "Release notes path (blank for release-notes.md in the asset directory)"
+  $latestResponse = Read-Host "Publish as latest? [y/N]"
+  $Latest = $latestResponse -match '^[Yy]([Ee][Ss])?$'
+  $assetDirectoryResponse = Read-Host "Asset directory [$AssetDirectory]"
+  if (-not [string]::IsNullOrWhiteSpace($assetDirectoryResponse)) {
+    $AssetDirectory = $assetDirectoryResponse
+  }
+}
+
 if ($CommitHash -notmatch '^[0-9a-fA-F]{7,64}$') {
   throw "CommitHash must contain 7 to 64 hexadecimal characters."
+}
+$AssetDirectory = (Resolve-Path -LiteralPath $AssetDirectory).Path
+if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
+  $ReleaseNotes = Join-Path (Join-Path $AssetDirectory $CommitHash) "release-notes.md"
 }
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
   throw "GitHub CLI (gh) is required. Authenticate with 'gh auth login' first."
