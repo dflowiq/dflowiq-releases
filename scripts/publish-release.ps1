@@ -2,16 +2,18 @@ param(
   [string]$CommitHash,
   [string]$ReleaseNotes,
   [string]$AssetDirectory = (Join-Path $PSScriptRoot "../release-assets"),
-  [switch]$Latest
+  [switch]$Latest,
+  [switch]$NoLatest
 )
 
 $ErrorActionPreference = "Stop"
+$Latest = -not $NoLatest
 
 if ($PSBoundParameters.Count -eq 0) {
   $CommitHash = Read-Host "Commit hash"
   $ReleaseNotes = Read-Host "Release notes path (blank for release-notes.md in the asset directory)"
-  $latestResponse = Read-Host "Publish as latest? [y/N]"
-  $Latest = $latestResponse -match '^[Yy]([Ee][Ss])?$'
+  $latestResponse = Read-Host "Publish as latest? [Y/n]"
+  $Latest = $latestResponse -notmatch '^[Nn]([Oo])?$'
   $assetDirectoryResponse = Read-Host "Asset directory [$AssetDirectory]"
   if (-not [string]::IsNullOrWhiteSpace($assetDirectoryResponse)) {
     $AssetDirectory = $assetDirectoryResponse

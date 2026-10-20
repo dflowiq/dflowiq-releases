@@ -41,23 +41,23 @@ Every hash-tagged release includes `dflowiq-update-manifest.json` with this sche
 
 `schemaVersion` is always the numeric value `2`, and `commit` is the GitHub Release commit hash. `platforms` contains one entry for each available installer, keyed by target (`macos-arm64`, `windows-amd64`, `windows-arm64`, `linux-amd64`, or `linux-arm64`). Each entry has a `buildId` of `<commit>-<epochInMillis>` and a numeric `buildTimestampMillis` matching that target's installer filename. Entries are omitted for unavailable platforms, and platform timestamps may differ.
 
-The publishing scripts generate this manifest once from the selected installers and upload those exact bytes to the immutable hash-tagged release and, with `-Latest` or `--latest`, the mutable `latest` release. Each release has its own `SHA256SUMS`: the immutable release lists its hash-and-timestamp installer names, while `latest` lists the stable renamed installer names it actually uploads. Both checksum files include the unchanged manifest as `dflowiq-update-manifest.json`.
+The publishing scripts generate this manifest once from the selected installers and upload those exact bytes to the immutable hash-tagged release and, by default, the mutable `latest` release. Each release has its own `SHA256SUMS`: the immutable release lists its hash-and-timestamp installer names, while `latest` lists the stable renamed installer names it actually uploads. Both checksum files include the unchanged manifest as `dflowiq-update-manifest.json`.
 
 ## Manual publication
 
 After building and verifying installers, place each available file in its platform directory under `release-assets/<hash>/`. Create release notes from [release-notes-template.md](release-notes-template.md), then run:
 
 ```powershell
-./scripts/publish-release.ps1 -CommitHash a1b2c3d -ReleaseNotes ./docs/release-notes/a1b2c3d.md -Latest
+./scripts/publish-release.ps1 -CommitHash a1b2c3d -ReleaseNotes ./docs/release-notes/a1b2c3d.md
 ```
 
 ```bash
-./scripts/publish-release.sh --commit-hash a1b2c3d --release-notes ./docs/release-notes/a1b2c3d.md --latest
+./scripts/publish-release.sh --commit-hash a1b2c3d --release-notes ./docs/release-notes/a1b2c3d.md
 ```
 
-The scripts select at most one valid installer from each platform directory, skip missing platforms, and create an immutable hash-tagged release. The hash identifies the external application artifact; the GitHub Release tag itself targets this repository's `main` branch because GitHub cannot target a commit in another repository. `SHA256SUMS` names the exact uploaded files for that release, including `dflowiq-update-manifest.json`. Add `-Latest` or `--latest` to create or replace a separate `latest` release and tag. It contains the same installer bytes under stable names, plus the unchanged manifest, so it has a separate checksum file naming those stable assets. Hash-tagged releases remain unchanged. `release-assets/` is intentionally ignored by Git; do not commit installers to repository history.
+The scripts select at most one valid installer from each platform directory, skip missing platforms, and create an immutable hash-tagged release. The hash identifies the external application artifact; the GitHub Release tag itself targets this repository's `main` branch because GitHub cannot target a commit in another repository. `SHA256SUMS` names the exact uploaded files for that release, including `dflowiq-update-manifest.json`. By default, the scripts also create or replace a separate `latest` release and tag. It contains the same installer bytes under stable names, plus the unchanged manifest, so it has a separate checksum file naming those stable assets. Use `-NoLatest` or `--no-latest` to publish only the immutable release. Hash-tagged releases remain unchanged. `release-assets/` is intentionally ignored by Git; do not commit installers to repository history.
 
-Running either publishing script with no arguments starts an interactive prompt for the commit hash, release-notes path, whether to publish `latest`, and the asset directory. Press Enter for the default asset directory, answer no (the default) to skip `latest`, or leave the release-notes path blank to use `<asset-directory>/<hash>/release-notes.md` (`release-assets/<hash>/release-notes.md` with the default directory).
+Running either publishing script with no arguments starts an interactive prompt for the commit hash, release-notes path, whether to publish `latest`, and the asset directory. Press Enter for the default asset directory, or press Enter at the `latest` prompt to publish it; answer no to skip `latest`, or leave the release-notes path blank to use `<asset-directory>/<hash>/release-notes.md` (`release-assets/<hash>/release-notes.md` with the default directory).
 
 The `latest` release and its tag must remain deletable. Do not enable a repository-wide immutable-release policy if this mutable download channel is required.
 
@@ -99,7 +99,7 @@ Set direct URLs only after the relevant asset has been released. Otherwise, poin
 
 ## Latest asset URLs
 
-When published with `-Latest` or `--latest`, clients can use these mutable URLs:
+By default, clients can use these mutable URLs:
 
 ```text
 https://github.com/dflowiq/dflowiq-releases/releases/download/latest/dflowiq-macos-arm64.dmg

@@ -2,14 +2,14 @@
 set -euo pipefail
 
 usage() {
-  printf 'Usage: %s [--commit-hash HASH] [--release-notes PATH] [--asset-directory PATH] [--latest]\n' "$0" >&2
+  printf 'Usage: %s [--commit-hash HASH] [--release-notes PATH] [--asset-directory PATH] [--no-latest]\n' "$0" >&2
   exit 1
 }
 
 commit_hash=''
 release_notes=''
 asset_directory="$(dirname "$0")/../release-assets"
-latest=false
+latest=true
 interactive=false
 
 [[ $# -eq 0 ]] && interactive=true
@@ -32,6 +32,10 @@ while [[ $# -gt 0 ]]; do
       latest=true
       shift
       ;;
+    --no-latest)
+      latest=false
+      shift
+      ;;
     *)
       usage
       ;;
@@ -41,8 +45,8 @@ done
 if [[ "$interactive" == true ]]; then
   read -r -p 'Commit hash: ' commit_hash
   read -r -p 'Release notes path (blank for release-notes.md in the asset directory): ' release_notes
-  read -r -p 'Publish as latest? [y/N]: ' latest_response
-  [[ "$latest_response" =~ ^[Yy]([Ee][Ss])?$ ]] && latest=true
+  read -r -p 'Publish as latest? [Y/n]: ' latest_response
+  [[ "$latest_response" =~ ^[Nn]([Oo])?$ ]] && latest=false
   read -r -p "Asset directory [$asset_directory]: " asset_directory_response
   [[ -n "$asset_directory_response" ]] && asset_directory="$asset_directory_response"
 fi

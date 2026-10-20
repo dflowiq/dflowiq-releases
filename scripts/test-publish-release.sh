@@ -19,7 +19,7 @@ printf 'Release notes\n' > "$temp_directory/notes.md"
 cp "$script_directory/test-fixtures/mock-gh" "$temp_directory/bin/gh"
 
 PATH="$temp_directory/bin:$PATH" GH_CAPTURE="$temp_directory/received" \
-  "$script_directory/publish-release.sh" --commit-hash "$commit_hash" --release-notes "$temp_directory/notes.md" --asset-directory "$asset_directory" --latest
+  "$script_directory/publish-release.sh" --commit-hash "$commit_hash" --release-notes "$temp_directory/notes.md" --asset-directory "$asset_directory"
 
 expected_manifest=$(printf '{"schemaVersion":2,"commit":"%s","platforms":{"macos-arm64":{"buildId":"%s-%s","buildTimestampMillis":%s},"windows-arm64":{"buildId":"%s-%s","buildTimestampMillis":%s},"linux-amd64":{"buildId":"%s-%s","buildTimestampMillis":%s}}}\n' "$commit_hash" "$commit_hash" "$timestamp_macos" "$timestamp_macos" "$commit_hash" "$timestamp_windows" "$timestamp_windows" "$commit_hash" "$timestamp_linux" "$timestamp_linux")
 immutable_manifest="$temp_directory/received/$commit_hash/dflowiq-update-manifest.json"
@@ -43,6 +43,12 @@ for release in "$commit_hash" latest; do
   (cd "$temp_directory/received/$release" && shasum -a 256 -c SHA256SUMS)
 done
 
+no_latest_received_directory="$temp_directory/no-latest-received"
+PATH="$temp_directory/bin:$PATH" GH_CAPTURE="$no_latest_received_directory" \
+  "$script_directory/publish-release.sh" --commit-hash "$commit_hash" --release-notes "$temp_directory/notes.md" --asset-directory "$asset_directory" --no-latest
+[[ -f "$no_latest_received_directory/$commit_hash/dflowiq-update-manifest.json" ]] || { printf 'Opt-out publication did not create the immutable release.\n' >&2; exit 1; }
+[[ ! -d "$no_latest_received_directory/latest" ]] || { printf 'Opt-out publication unexpectedly created a latest release.\n' >&2; exit 1; }
+
 interactive_commit_hash="1234567"
 interactive_release_directory="$asset_directory/$interactive_commit_hash"
 interactive_received_directory="$temp_directory/interactive-received"
@@ -54,4 +60,4 @@ printf '%s\n\n\n%s\n' "$interactive_commit_hash" "$asset_directory" | PATH="$tem
   "$script_directory/publish-release.sh"
 
 [[ -f "$interactive_received_directory/$interactive_commit_hash/dflowiq-update-manifest.json" ]] || { printf 'Interactive publication did not create the immutable release.\n' >&2; exit 1; }
-[[ ! -d "$interactive_received_directory/latest" ]] || { printf 'Interactive publication unexpectedly created a latest release.\n' >&2; exit 1; }
+[[ -d "$interactive_received_directory/latest" ]] || { printf 'Interactive publication did not create a latest release.\n' >&2; exit 1; }

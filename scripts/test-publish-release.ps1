@@ -57,7 +57,7 @@ try {
   $notesPath = Join-Path $tempDirectory "notes.md"
   Set-Content -LiteralPath $notesPath -Value "Release notes"
 
-  & (Join-Path $scriptDirectory "publish-release.ps1") -CommitHash $commitHash -ReleaseNotes $notesPath -AssetDirectory $assetDirectory -Latest
+  & (Join-Path $scriptDirectory "publish-release.ps1") -CommitHash $commitHash -ReleaseNotes $notesPath -AssetDirectory $assetDirectory
 
   $immutableManifest = Join-Path $receivedDirectory "$commitHash/dflowiq-update-manifest.json"
   $latestManifest = Join-Path $receivedDirectory "latest/dflowiq-update-manifest.json"
@@ -86,6 +86,11 @@ try {
       }
     }
 
+    $receivedDirectory = Join-Path $tempDirectory "no-latest-received"
+    & (Join-Path $scriptDirectory "publish-release.ps1") -CommitHash $commitHash -ReleaseNotes $notesPath -AssetDirectory $assetDirectory -NoLatest
+    if (-not (Test-Path -LiteralPath (Join-Path $receivedDirectory "$commitHash/dflowiq-update-manifest.json") -PathType Leaf)) { throw "Opt-out publication did not create the immutable release." }
+    if (Test-Path -LiteralPath (Join-Path $receivedDirectory "latest") -PathType Container) { throw "Opt-out publication unexpectedly created a latest release." }
+
     $interactiveCommitHash = "1234567"
     $interactiveReleaseDirectory = Join-Path $assetDirectory $interactiveCommitHash
     New-Item -ItemType Directory -Force -Path (Join-Path $interactiveReleaseDirectory "macos-arm64") | Out-Null
@@ -102,7 +107,7 @@ try {
     & (Join-Path $scriptDirectory "publish-release.ps1")
 
     if (-not (Test-Path -LiteralPath (Join-Path $receivedDirectory "$interactiveCommitHash/dflowiq-update-manifest.json") -PathType Leaf)) { throw "Interactive publication did not create the immutable release." }
-    if (Test-Path -LiteralPath (Join-Path $receivedDirectory "latest") -PathType Container) { throw "Interactive publication unexpectedly created a latest release." }
+    if (-not (Test-Path -LiteralPath (Join-Path $receivedDirectory "latest") -PathType Container)) { throw "Interactive publication did not create a latest release." }
 } finally {
   Remove-Item -LiteralPath $tempDirectory -Recurse -Force -ErrorAction SilentlyContinue
 }
